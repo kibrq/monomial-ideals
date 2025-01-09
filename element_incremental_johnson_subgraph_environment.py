@@ -14,10 +14,19 @@ from johnson_graph import (
     visualize_johson_graph,
 )
 
-from linear_test import python_linear_test as linearity_test
+from linearity_test import linearity_test
 
 class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
-    def __init__(self, n, k, max_length=None, disconnected_reward: int = -1e6, seed: Optional[int] = None):
+    def __init__(
+        self, n: int, k: int,
+        max_length: Optional[int] = None,
+        disconnected_reward: float = 0,
+        non_linearity_reward: float = 0,
+        use_diameter_as_reward: bool = False,
+        use_diameter_difference_as_reward: bool = True,
+        seed: Optional[int] = None,
+        **kwargs,
+    ):
         super().__init__()
         self.n = n
         self.k = k
@@ -25,6 +34,9 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
         
         # Large negative reward for disconnected graph
         self.disconnected_reward = disconnected_reward
+        self.non_linearity_reward = non_linearity_reward
+        self.use_diameter_as_reward = use_diameter_as_reward
+        self.use_diameter_difference_as_reward = use_diameter_difference_as_reward
         
         # Action space: selecting elements from 0 to n, 0 is reserved for padding
         self.action_space = spaces.Discrete(self.n + 1)
@@ -32,6 +44,8 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
         self.observation_space = spaces.MultiDiscrete([[self.n + 1] * self.k] * self.max_length)
         
         self.reset(seed = seed)
+
+        self.kwargs = kwargs
 
     def _get_info(self, **kwargs):
         return {**kwargs}
@@ -80,12 +94,23 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
             graph = self.state["graph"]
             # if not nx.is_connected(graph):
                 # self.state = remove_subset_from_johnson_graph(self.current_subset, self.state)
-                
-            if nx.is_connected(graph) and linearity_test(graph.nodes):
+
+            if not nx.is_connected(graph):
+                reward = self.disconnected_reward
+
+            elif not linearity_test(graph.nodes, **self.kwargs):
+                reward = self.non_linearity_reward
+
+            else:
                 current_diameter = nx.diameter(graph)
-                reward = current_diameter - self.previous_diameter
+                if self.use_diameter_as_reward:
+                    reward = current_diameter
+                elif self.use_diameter_difference_as_reward:
+                    reward = current_diameter - self.previous_diameter
+                else:
+                    assert False
+                    
                 self.previous_diameter = current_diameter
-                # Update the state sequence
                 
 
             # Reset the current subset
