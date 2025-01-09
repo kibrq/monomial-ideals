@@ -1,5 +1,9 @@
 from collections import defaultdict
 
+
+from subprocess import 
+
+
 def sage_linearity_test(monomials):
 
     import sage.all as sage
@@ -13,7 +17,7 @@ def sage_linearity_test(monomials):
     monomials = [sage.prod([x[i] for i in m]) for m in monomials]
     
     for gen in sage.Ideal(monomials).syzygy_module():
-        if set(map(lambda x: x.degree(), gen)) != {-1, 1}:
+        if not set(map(lambda x: x.degree(), gen)) <= {-1, 1}:
             return False
     return True
 
@@ -63,10 +67,10 @@ def sympy_linearity_test(monomials, base_field = None):
     return linear_submod == module
 
 
-def linearity_test(monomials, backend="sage", **kwargs):
+def linearity_test(monomials, backend="M2", **kwargs):
     backend = backend.lower()
-    if backend.lower() in ["sage"]:
-        return sage_linearity_test(monomials, **kwargs)
+    # if backend.lower() in ["sage"]:
+    #     return sage_linearity_test(monomials, **kwargs)
     if backend in ['m2', 'macaulay2']:
         return M2_linearity_test(monomials, **kwargs)
     if backend in ['sympy', 'sp', 'python']:
