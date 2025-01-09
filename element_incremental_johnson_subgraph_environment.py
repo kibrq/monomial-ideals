@@ -21,6 +21,7 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
         self, n: int, k: int,
         max_initial_length: int = 5,
         max_length: Optional[int] = None,
+        max_episode_steps: Optional[int] = None,
         disconnected_reward: float = 0,
         non_linearity_reward: float = 0,
         use_diameter_as_reward: bool = False,
@@ -33,6 +34,7 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
         self.k = k
         self.max_initial_length = max_initial_length
         self.max_length = max_length if max_length is not None else int(comb(n, k))
+        self.max_episode_steps = max_episode_steps
 
         assert self.max_initial_length < self.max_length
         
@@ -68,6 +70,7 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
 
         self.np_subsets = np.zeros((self.max_length, self.k), dtype = int)
         self.num_subsets = 0
+        self.num_steps = 0
 
         self.state = init_johnson_graph(self.n, self.k)
         graph = self.state['graph']
@@ -98,11 +101,17 @@ class ElementIncrementalJohnsonSubgraphEnv(gym.Env):
 
     def step(self, action):
         """Performs one step in the environment."""
+        self.num_steps += 1
+        
         reward = 0
         terminated = False
         truncated = False
 
         # return self._get_observation(), reward, terminated, truncated, self._get_info()
+
+        if self.max_episode_steps and self.num_steps >= self.max_episode_steps:
+            truncated = True
+            return self._get_observation(), reward, terminated, True, self._get_info()
 
         if action == 0 or action in self.current_subset:
             return self._get_observation(), reward, terminated, truncated, self._get_info()

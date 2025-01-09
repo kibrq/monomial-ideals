@@ -189,7 +189,8 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.env_id, i, args.capture_video, run_name,
             n = args.env_n, k = args.env_k, max_length = args.env_max_length,
-            max_initial_length = args.env_max_initial_length)
+            max_initial_length = args.env_max_initial_length,
+            max_episode_steps = 2000)
          for i in range(args.num_envs)],
     )
     # envs = gym.wrappers.RecordEpisodeStatistics(envs)
