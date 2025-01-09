@@ -1,9 +1,6 @@
 from collections import defaultdict
 
 
-from subprocess import 
-
-
 def sage_linearity_test(monomials):
 
     import sage.all as sage
