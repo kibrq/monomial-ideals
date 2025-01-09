@@ -13,9 +13,12 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from models import NestedSetsModel, DeepSetLayer
+from models import NestedSetsModel, DeepSetLayer, SetTransformer, PMA
 
 import element_incremental_johnson_subgraph_environment
+
+os.environ["WANDB_API_KEY"]="01445c33dcf24b9ffc0473b43981d645bd903ce0"
+os.environ["WANDB_PROJECT"]="Monomial Ideals"
 
 @dataclass
 class Args:
@@ -104,15 +107,16 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
 
+        dim = 32
         self.feature_extractor = NestedSetsModel(
-            encoders = [DeepSetLayer(dim = 32), DeepSetLayer(dim = 32)],
-            dim_hidden = 32,
-            dim_output = 32,
-            vocab_size = 11,
+            encoders = [DeepSetLayer(dim = dim), SetTransformer(dim_hidden = dim, num_layers = 10)],
+            dim_hidden = dim,
+            dim_output = dim,
         )
-        
+
         self.critic = nn.Sequential(
             self.feature_extractor,
+            PMA(dim, num_heads = 4, num_seeds = 1),
             layer_init(nn.Linear(32, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
@@ -121,6 +125,7 @@ class Agent(nn.Module):
         )
         self.actor = nn.Sequential(
             self.feature_extractor,
+            PMA(dim, num_heads = 4, num_seeds = 1),
             layer_init(nn.Linear(32, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
@@ -173,7 +178,7 @@ if __name__ == "__main__":
     
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name, n = 10, k = 4, max_length = 50) for i in range(args.num_envs)],
+        [make_env(args.env_id, i, args.capture_video, run_name, n = 10, k = 4, max_length = 10) for i in range(args.num_envs)],
     )
     # envs = gym.wrappers.RecordEpisodeStatistics(envs)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
@@ -223,6 +228,7 @@ if __name__ == "__main__":
             
             if "episode" in infos:
                 print(f"global_step={global_step}, episodic_return={infos['episode']['r']}")
+                writer.add_scalar("charts/episodic_max_diameters", infos["max_diameter"][next_done].max(), global_step)
                 writer.add_scalar("charts/episodic_return", infos["episode"]["r"][next_done].mean(), global_step)
                 writer.add_scalar("charts/episodic_length", infos["episode"]["l"][next_done].mean(), global_step)
     
