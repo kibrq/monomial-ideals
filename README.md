@@ -51,6 +51,3 @@ You can check out the latest Weights & Biases (wandb) runs [here](https://wandb.
   ```sh
   python3 ppo.py --help
   ```
-
-Happy Training!
-
