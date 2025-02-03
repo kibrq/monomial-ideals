@@ -1,4 +1,6 @@
 ###### docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
+from typing import Optional
+
 import os
 import random
 import time
@@ -17,8 +19,10 @@ from models import NestedSetsModel, DeepSetLayer, SetTransformer
 
 import johnson_subgraph_environment
 
-os.environ["WANDB_API_KEY"]="01445c33dcf24b9ffc0473b43981d645bd903ce0"
-os.environ["WANDB_PROJECT"]="Monomial Ideals"
+with open("/home/jovyan/env", "r") as file:
+    for line in file.readlines():
+        k, v = line.split("=", maxsplit=1)
+        os.environ[k.strip()] = v.strip()
 
 @dataclass
 class Args:
@@ -32,9 +36,9 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "Monomial Ideals"
+    wandb_project_name: Optional[str] = None
     """the wandb's project name"""
-    wandb_entity: str = "kibrq"
+    wandb_entity: Optional[str] = None
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
@@ -42,6 +46,7 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "JohnsonSubgraph-v0;n=10;k=4;action_is_subset=True"
     """the id of the environment"""
+    
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
@@ -72,7 +77,7 @@ class Args:
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
-    target_kl: float = None
+    target_kl: Optional[float] = None
     """the target KL divergence threshold"""
 
     # to be filled in runtime
