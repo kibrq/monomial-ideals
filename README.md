@@ -2,6 +2,8 @@
 
 ## PPO Training for Johnson Subgraph Environment
 
+This implementation of PPO is based on the CleanRL repository: [https://github.com/vwxyzjn/cleanrl](https://github.com/vwxyzjn/cleanrl).
+
 This repository contains `ppo.py`, which implements Proximal Policy Optimization (PPO) for training an agent in the Johnson subgraph environment. You can run the script with various arguments to customize the training process.
 
 ### Running the Script
@@ -45,3 +47,4 @@ To use the M2 backend for linearity checks, you need to have `Macaulay2` and `Sa
   ```sh
   python3 ppo.py --help
   ```
+
