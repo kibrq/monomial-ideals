@@ -13,9 +13,9 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from models import NestedSetsModel, DeepSetLayer, SetTransformer, PMA
+from models import NestedSetsModel, DeepSetLayer, SetTransformer
 
-import element_incremental_johnson_subgraph_environment
+import johnson_subgraph_environment
 
 os.environ["WANDB_API_KEY"]="01445c33dcf24b9ffc0473b43981d645bd903ce0"
 os.environ["WANDB_PROJECT"]="Monomial Ideals"
@@ -40,7 +40,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "ElementIncrementalJohnsonSubgraph-v0"
+    env_id: str = "JohnsonSubgraph-v0;n=10;k=4;action_is_subset=True"
     """the id of the environment"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
@@ -84,6 +84,42 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
 
+def parse_environment_id(env_id):
+    splits = env_id.split(";")
+    env_id = splits[0]
+
+    from pyparsing import Word, alphas, alphanums, nums, Combine, Optional, oneOf, Suppress, Regex, StringEnd
+    
+    # Define the key: a word starting with a letter or underscore, followed by letters, underscores, or digits.
+    key = Word(alphas + "_", alphanums + "_")
+    
+    # Define an integer: an optional minus sign followed by digits.
+    integer = Combine(Optional("-") + Word(nums)).setParseAction(lambda t: int(t[0]))
+    
+    # Define a float: digits, a dot, and more digits (with an optional minus sign).
+    floatnum = Regex(r'-?\d+\.\d+').setParseAction(lambda t: float(t[0]))
+    
+    # Define a boolean: either 'true' or 'false' (case-insensitive).
+    boolean = oneOf("true false", caseless=True).setParseAction(lambda t: t[0].lower() == "true")
+    
+    # Define a quoted string (e.g. "hello world")
+    quoted_string = (Suppress('"') + Regex(r'[^"]*') + Suppress('"')).setParseAction(lambda t: t[0])
+    
+    # Define a bare string as a fallback (e.g. hello_world)
+    bare_string = Word(alphanums + "_-")
+    
+    # The value can be float, integer, boolean, quoted string, or bare string.
+    # Note: the order matters: floats before integers so that "3.14" isn’t parsed as "3" + ".14".
+    value = floatnum | integer | boolean | quoted_string | bare_string
+    
+    # Define the overall assignment: key "=" value (with no extra trailing text).
+    assignment = key("key") + Suppress("=") + value("value") + StringEnd()
+
+    from functools import reduce
+    
+    return env_id, reduce(lambda x, y: {**x, **y}, ({x[0]: x[1]} for x in map(assignment.parse_string, splits[1:])), {})
+
+
 def make_env(env_id, idx, capture_video, run_name, **kwargs):
     def thunk():
         if capture_video and idx == 0:
@@ -116,7 +152,6 @@ class Agent(nn.Module):
 
         self.critic = nn.Sequential(
             self.feature_extractor,
-            PMA(dim, num_heads = 4, num_seeds = 1),
             layer_init(nn.Linear(32, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
@@ -125,7 +160,6 @@ class Agent(nn.Module):
         )
         self.actor = nn.Sequential(
             self.feature_extractor,
-            PMA(dim, num_heads = 4, num_seeds = 1),
             layer_init(nn.Linear(32, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
@@ -175,10 +209,11 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
     
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-    
+
+    env_id, kwargs = parse_environment_id(args.env_id)
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name, n = 10, k = 4, max_length = 10) for i in range(args.num_envs)],
+        [make_env(env_id, i, args.capture_video, run_name, **kwargs) for i in range(args.num_envs)],
     )
     # envs = gym.wrappers.RecordEpisodeStatistics(envs)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
@@ -316,6 +351,9 @@ if __name__ == "__main__":
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+
+        with open(f"runs/{run_name}/checkpoint.pt", "wb") as file:
+            torch.save(agent.state_dict(), file)
     
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)

@@ -38,7 +38,6 @@ class DeepSetLayer(nn.Module):
         return self.decoder(mean_X)  # Shape: batch_size x dim
 
 
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -130,7 +129,7 @@ class SetTransformer(nn.Module):
     def forward(self, X, mask):
         for layer in self.layers:
             X = layer(X)
-        return X
+        return X.mean(dim=-2)
         # return self.dec(self.enc(X))
 
 
