@@ -2,7 +2,7 @@
 
 ## PPO Training for Johnson Subgraph Environment
 
-This implementation of PPO is based on the CleanRL repository: [https://github.com/vwxyzjn/cleanrl](https://github.com/vwxyzjn/cleanrl).
+This implementation of PPO is based on the [CleanRL repository](https://github.com/vwxyzjn/cleanrl).
 
 This repository contains `ppo.py`, which implements Proximal Policy Optimization (PPO) for training an agent in the Johnson subgraph environment. You can run the script with various arguments to customize the training process.
 
@@ -41,10 +41,16 @@ python3 ppo.py --env_id="JohnsonSubgraph-v0;n=12;k=6;action_is_subset=True;max_l
 To use the M2 backend for linearity checks, you need to have `Macaulay2` and `SageMath` installed on your system. Ensure they are properly configured before running the script.
 
 ### Notes
+
+### Tracking Training Progress
+You can check out the latest Weights & Biases (wandb) runs [here](https://wandb.ai/kibrq/Monomial%20Ideals?nw=nwuserkibrq).
+
 - Ensure that all arguments in `--env_id` are separated by `;` and match the expected key-value format.
 - The PPO training script supports additional hyperparameter tuning via command-line arguments.
 - Use `--help` to see all available options:
   ```sh
   python3 ppo.py --help
   ```
+
+Happy Training!
 
