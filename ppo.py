@@ -19,10 +19,10 @@ from models import NestedSetsModel, DeepSetLayer, SetTransformer
 
 import johnson_subgraph_environment
 
-with open("/home/jovyan/env", "r") as file:
-    for line in file.readlines():
-        k, v = line.split("=", maxsplit=1)
-        os.environ[k.strip()] = v.strip()
+# with open("/home/jovyan/env", "r") as file:
+#     for line in file.readlines():
+#         k, v = line.split("=", maxsplit=1)
+#         os.environ[k.strip()] = v.strip()
 
 @dataclass
 class Args:

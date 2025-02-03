@@ -1,4 +1,45 @@
+from typing import Optional, Any, Dict
+
+import gymnasium as gym
+from gymnasium import spaces
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+from collections import defaultdict
+from functools import partial
+from itertools import combinations
 import math
+
+from johnson_graph import (
+    init_johnson_graph,
+    add_subset_to_johnson_graph,
+    remove_subset_from_johnson_graph,
+    visualize_johson_graph,
+)
+
+from linearity_test import linearity_test
+
+
+# This file implements `gymnasium` environment for building subgraph of Johnson graph
+# (https://en.wikipedia.org/wiki/Johnson_graph) with maximum possible diameter and if subsets 
+# inducing this subgraph creates "linear ideal" in Polynomial Ring.
+#
+# Environment creates a subgraph of J(n, k) and during reset it makes it empty and adds 
+# a random number (from zero to `init_max_length`) random subsets to initialize the environment.
+#
+# There is a reward model that can be set. For __init__ method you can provide any keywords 
+# starting from `reward_` and they will be passed to `reward_model` function. There are two 
+# regimes supported: either environment rewards the agent as the difference of the previously 
+# acquired diameter and the current one or just rewards with the current diameter.
+#
+# It may check or not check for connectivity, linearity, and give or not give negative rewards 
+# for non-linearity or non-connectivity.
+#
+# Also, there are two regimes of the action model. One can either populate the environment 
+# by adding one element to the subset or adding the whole subset at once. This is regulated by 
+# the parameter `action_is_subset` or `action_is_element_of_subset`.
+#
+# For linearity check, one can choose from `M2` or `sympy` backend by providing `linearity_backend`.
 
 def binom(n, k):
     if k > n or k < 0:
@@ -29,32 +70,11 @@ def rank(n, k, S):
     return r
 
 
-from typing import Optional, Any, Dict
-
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
-from collections import defaultdict
-from functools import partial
-from itertools import combinations
-
-from johnson_graph import (
-    init_johnson_graph,
-    add_subset_to_johnson_graph,
-    remove_subset_from_johnson_graph,
-    visualize_johson_graph,
-)
-
-from linearity_test import linearity_test
-
-
 def extract_matching_kwargs(prefix, kwargs, do_pop=True, delimiter="_"):
+    """Extracts keyword arguments that match a given prefix."""
     matching_keys = [k for k in kwargs.keys() if k.startswith(prefix + delimiter)]
     func = getattr(kwargs, "pop") if do_pop else getattr(kwargs, "get")
     return {k[len(prefix) + len(delimiter):]: func(k) for k in matching_keys}
-
 
 def reward_model(
     internal_state: Any,
@@ -75,6 +95,7 @@ def reward_model(
 
     **kwargs
 ):
+    """Defines the reward model for the environment based on graph properties."""
     if not statistics:
         statistics = defaultdict(list)
 
@@ -142,9 +163,10 @@ def init_subset_incremental_action_model(n: int, k: int):
         return True, newset
         
     return space, step
-    
-    
+
+
 def init_action_model(n: int, k: int, is_subset: bool = False, is_element_of_subset: bool = True):
+    """Initializes the action model for adding elements or subsets."""
     if is_subset:
         return init_subset_incremental_action_model(n, k)
     if is_element_of_subset:
@@ -181,7 +203,7 @@ class JohnsonSubgraphEnv(gym.Env):
         self.reset(seed = seed)
 
     def _get_info(self, **kwargs):
-        return {**kwargs, **self.info}
+        return {**kwargs, **self.info, "graph": self.state["graph"]}
 
     def _get_observation(self, *args, **kwargs):
         return self.np_subsets
